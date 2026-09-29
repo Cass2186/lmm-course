@@ -39,12 +39,3 @@ format:
 engine: knitr
 execute:
   freeze: false
-
-webr:
-  cell-options:
-    fig-width: 7
-    fig-height: 4.2
-    timelimit: 180
-    persist: true
-  resources:
-    - data

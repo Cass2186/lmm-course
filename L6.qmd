@@ -2,6 +2,13 @@
 title: "6 · Capstone"
 subtitle: "Write the plan, run the analysis, then check it against the truth"
 webr:
+  resources:
+    - data
+  cell-options:
+    fig-width: 7
+    fig-height: 4.2
+    timelimit: 180
+    persist: true
   packages:
     - dplyr
     - tidyr

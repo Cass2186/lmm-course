@@ -2,6 +2,13 @@
 title: "3 · Modelling the RCT"
 subtitle: "Group × time, emmeans contrasts, baseline adjustment and dropout"
 webr:
+  resources:
+    - data
+  cell-options:
+    fig-width: 7
+    fig-height: 4.2
+    timelimit: 180
+    persist: true
   packages:
     - dplyr
     - tidyr

@@ -2,6 +2,13 @@
 title: "1 · Why mixed models?"
 subtitle: "Pseudoreplication, lost power, and the intraclass correlation"
 webr:
+  resources:
+    - data
+  cell-options:
+    fig-width: 7
+    fig-height: 4.2
+    timelimit: 180
+    persist: true
   packages:
     - dplyr
     - tidyr
