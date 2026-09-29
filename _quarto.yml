@@ -1,0 +1,50 @@
+project:
+  type: website
+  output-dir: docs
+  resources:
+    - data/
+
+website:
+  title: "LMMs for Hypertrophy Trials"
+  page-navigation: true
+  navbar:
+    left:
+      - href: index.qmd
+        text: Overview
+      - href: L1.qmd
+        text: "1 · Why mixed models"
+      - href: L2.qmd
+        text: "2 · Intercepts & slopes"
+      - href: L3.qmd
+        text: "3 · The RCT"
+      - href: L4.qmd
+        text: "4 · Inference"
+      - href: L5.qmd
+        text: "5 · Nesting & power"
+      - href: L6.qmd
+        text: "6 · Capstone"
+
+format:
+  live-html:
+    theme:
+      light: [flatly, theme.scss]
+      dark: [darkly, theme.scss]
+    toc: true
+    toc-depth: 2
+    code-copy: true
+    mainfont: "Source Sans 3"
+    grid:
+      body-width: 860px
+
+engine: knitr
+execute:
+  freeze: false
+
+webr:
+  cell-options:
+    fig-width: 7
+    fig-height: 4.2
+    timelimit: 180
+    persist: true
+  resources:
+    - data

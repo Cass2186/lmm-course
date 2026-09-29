@@ -1,0 +1,191 @@
+---
+title: "1 · Why mixed models?"
+subtitle: "Pseudoreplication, lost power, and the intraclass correlation"
+webr:
+  packages:
+    - dplyr
+    - tidyr
+    - ggplot2
+    - lme4
+    - lmerTest
+    - performance
+---
+
+{{< include _extensions/live/_knitr.qmd >}}
+{{< include _setup.qmd >}}
+
+Every row in a hypertrophy dataset belongs to someone. Three ultrasound images from one visit are not three participants, and a participant's week-12 CSA is not independent of their week-0 CSA. `lm()` assumes every row is independent. Get that wrong in one direction and your p-values are far too small (pseudoreplication). Get it wrong in the other and you throw away the within-person information that makes a repeated-measures trial powerful.
+
+## Levels and units
+
+| Level | Unit | n here | What varies |
+|---|---|---|---|
+| 4 | Arm | 2 | Treatment (randomized) |
+| 3 | Participant | 40 | Sex, baseline size, individual response |
+| 2 | Visit | 115 | Week, day-to-day hydration, probe placement |
+| 1 | Image | 344 | Image-to-image measurement error |
+
+The independent unit for a treatment effect is the level at which treatment was randomized: the **participant**. You have 40 of those, not 344.
+
+## Explore: what pseudoreplication does
+
+Each simulated experiment below has **no true group difference**. It compares two groups with a t-test on every image (pseudoreplication) and with a t-test on participant means (correct). Move the sliders and press **Run Code** to see how often each test gives a false positive.
+
+```{ojs}
+//| echo: false
+viewof n_per = Inputs.range([4, 20], {value: 10, step: 1, label: "Participants per group"})
+viewof k_img = Inputs.range([1, 10], {value: 3, step: 1, label: "Images per participant"})
+viewof icc_target = Inputs.range([0, 0.99], {value: 0.9, step: 0.01, label: "ICC"})
+```
+
+```{webr}
+#| input:
+#|   - n_per
+#|   - k_img
+#|   - icc_target
+#| caption: Pseudoreplication simulator (1000 null experiments)
+set.seed(1)
+total_var <- 9
+sd_person <- sqrt(icc_target * total_var)
+sd_image  <- sqrt((1 - icc_target) * total_var)
+
+one_experiment <- function() {
+  person <- rnorm(2 * n_per, 25, sd_person)
+  d <- data.frame(ID = rep(seq_len(2 * n_per), each = k_img),
+                  Group = rep(c("A", "B"), each = n_per * k_img))
+  d$y <- person[d$ID] + rnorm(nrow(d), 0, sd_image)
+  means <- aggregate(y ~ ID + Group, data = d, FUN = mean)
+  c(images = t.test(y ~ Group, data = d)$p.value,
+    people = if (n_per > 1) t.test(y ~ Group, data = means)$p.value else NA)
+}
+p <- replicate(1000, one_experiment())
+round(100 * rowMeans(p < 0.05), 1)   # % false positives (should be 5)
+```
+
+::: {.small-note}
+With 1 image per participant the two tests agree. The higher the ICC and the more images, the worse the image-level test gets, because extra images of the same muscle add almost no new information.
+:::
+
+## Exercises
+
+All exercises can see the course data already loaded above: `img` (one row per image), `sess` (one row per visit, lean mass and 1RM) and `csa` (the 3 images per visit averaged).
+
+### Q1 — Know your data
+
+How many visits are there per arm and week, and which participants are missing a visit?
+
+```{webr}
+#| exercise: l1q1
+sess |> count(Group, ______)
+
+sess |> count(ID) |> filter(n < ______)
+```
+
+::: {.hint exercise="l1q1"}
+Count by `Week` in the first line. Everyone should have 3 visits, so keep rows with `n < 3`.
+:::
+
+::: {.solution exercise="l1q1"}
+```r
+sess |> count(Group, Week)
+sess |> count(ID) |> filter(n < 3)
+csa  |> filter(n_img < 3)      # the visit with a missing image
+```
+Placebo has 20 / 19 / 20 visits and Protein 20 / 19 / 17 at weeks 0 / 6 / 12. P12 and P26 missed week 6; P07, P18 and P33 have no week-12 visit. P04's week-6 visit has 2 images. A complete-case repeated-measures ANOVA would drop all 5 of these participants.
+:::
+
+### Q2 — Spaghetti plot
+
+Plot VL CSA against week, one line per participant, faceted by arm, with the arm mean overlaid.
+
+```{webr}
+#| exercise: l1q2
+ggplot(csa, aes(Week, VL_CSA_cm2)) +
+  geom_line(aes(group = ______, colour = Sex), alpha = 0.5) +
+  stat_summary(fun = mean, geom = "line", linewidth = 1.2) +
+  facet_wrap(~ ______) +
+  scale_x_continuous(breaks = c(0, 6, 12)) +
+  theme_bw()
+```
+
+::: {.hint exercise="l1q2"}
+Lines are grouped by participant (`ID`) and faceted by arm (`Group`).
+:::
+
+::: {.solution exercise="l1q2"}
+```r
+ggplot(csa, aes(Week, VL_CSA_cm2)) +
+  geom_line(aes(group = ID, colour = Sex), alpha = 0.5) +
+  stat_summary(fun = mean, geom = "line", linewidth = 1.2) +
+  facet_wrap(~ Group) +
+  scale_x_continuous(breaks = c(0, 6, 12)) +
+  theme_bw()
+```
+People start anywhere from about 15 to 33 cm² (men about 23–33, women about 15–27), but almost every line rises gently and nearly in parallel by 1–2 cm². The treatment question is about the **slopes**, which are small compared with the vertical spread between people.
+:::
+
+### Q3 — Three analyses of one question
+
+The trial question is the `GroupProtein:Week_f12` coefficient: extra change to week 12 with Protein. Fit it three ways and compare estimates and SEs for that term and for `GroupProtein` (the baseline difference).
+
+```{webr}
+#| exercise: l1q3
+f_img <- lm(VL_CSA_cm2 ~ Group * Week_f + Sex, data = ______)
+f_vis <- lm(VL_CSA_cm2 ~ Group * Week_f + Sex, data = csa)
+f_lmm <- lmer(VL_CSA_cm2 ~ Group * Week_f + Sex + (1 | ______), data = csa)
+
+rows <- c("GroupProtein", "GroupProtein:Week_f12")
+lapply(list(images = f_img, visits = f_vis, lmm = f_lmm),
+       function(f) round(coef(summary(f))[rows, 1:2], 3))
+```
+
+::: {.hint exercise="l1q3"}
+The first model uses the image-level data frame `img`. The random intercept is for participant, `ID`.
+:::
+
+::: {.solution exercise="l1q3"}
+```r
+f_img <- lm(VL_CSA_cm2 ~ Group * Week_f + Sex, data = img)
+f_vis <- lm(VL_CSA_cm2 ~ Group * Week_f + Sex, data = csa)
+f_lmm <- lmer(VL_CSA_cm2 ~ Group * Week_f + Sex + (1 | ID), data = csa)
+```
+
+| Model | Baseline diff (SE) | Diff in change (SE) |
+|---|---|---|
+| `lm`, 344 images | 0.902 (0.538) | 0.701 (0.777) |
+| `lm`, 115 visits | 0.902 (0.946) | 0.701 (1.367) |
+| `lmer` | 0.902 (0.948) | **0.990 (0.282)** |
+
+The image-level `lm` SE for the baseline difference is too small because it counts every image as a new person (pseudoreplication). For the difference in change, both `lm` fits are 3–5× less precise than the LMM, because the ~3 cm² between-person spread sits in their residual. The estimate also shifts (0.70 vs 0.99), because with dropout the unpaired `lm` compares different people at week 0 and week 12.
+:::
+
+### Q4 — ICC
+
+Fit an intercept-only random-intercept model to `csa` and compute the ICC.
+
+```{webr}
+#| exercise: l1q4
+fit0 <- lmer(VL_CSA_cm2 ~ 1 + (1 | ID), data = csa)
+VarCorr(fit0)
+performance::______(fit0)
+```
+
+::: {.hint exercise="l1q4"}
+The function is `icc()`.
+:::
+
+::: {.solution exercise="l1q4"}
+```r
+performance::icc(fit0)
+```
+Participant SD ≈ 4.04 cm², residual SD ≈ 1.00 cm², ICC ≈ 0.94. In plain language: 94% of the variation in CSA values is people being different sizes; only 6% is change within people plus measurement noise. Each extra participant is worth far more than each extra scan of the same participant.
+:::
+
+## Mini-project
+
+Do the same for **leg lean mass** (`sess$Leg_Lean_Mass_kg`): a spaghetti plot, the ICC, and a paragraph for a lab meeting on why the trial will be analysed with a mixed model. Use the sandbox below; it keeps your code between visits.
+
+```{webr}
+#| caption: Sandbox
+# your code here
+```

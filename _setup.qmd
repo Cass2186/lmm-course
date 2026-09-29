@@ -1,0 +1,31 @@
+::: {.callout-note collapse="true"}
+## Course data (loads automatically; click to see the code)
+
+R runs inside your browser. The first visit downloads R and the packages, which takes 20–40 seconds; after that the browser caches them. Wait for this block to finish before running exercises.
+
+```{webr}
+#| autorun: true
+#| edit: false
+#| output: false
+pkgs <- c("dplyr", "tidyr", "ggplot2", "lme4", "lmerTest", "emmeans", "performance", "nlme")
+for (p in intersect(pkgs, rownames(installed.packages())))
+  suppressPackageStartupMessages(library(p, character.only = TRUE, exclude = if (p == "nlme") "lmList" else NULL))
+
+prep <- function(df) {
+  df |> mutate(
+    ID     = factor(ID),
+    Group  = factor(Group, levels = c("Placebo", "Protein")),
+    Sex    = factor(Sex),
+    Week_f = factor(Week)
+  )
+}
+img  <- read.csv("data/hypertrophy_images.csv")   |> prep()   # 1 row per ultrasound image
+sess <- read.csv("data/hypertrophy_sessions.csv") |> prep()   # 1 row per visit
+csa  <- img |>
+  group_by(ID, Group, Sex, Week, Week_f) |>
+  summarise(VL_CSA_cm2 = mean(VL_CSA_cm2), n_img = n(), .groups = "drop")
+csa$Week12  <- csa$Week / 12
+sess$Week12 <- sess$Week / 12
+theme_set(theme_bw(base_size = 13))
+```
+:::

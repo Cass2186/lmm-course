@@ -1,0 +1,36 @@
+---
+title: "Linear Mixed Models for Hypertrophy Trials"
+subtitle: "An interactive companion to the Obsidian course notes"
+---
+
+{{< include _extensions/live/_knitr.qmd >}}
+
+Every code box on these pages runs real R, inside your browser. There's nothing to install. Edit the code, press **Run Code**, and use **Show Hint** and **Show Solution** when you're stuck. Your edits are saved in this browser, so you can come back later.
+
+## The case study
+
+A simulated 12-week RCT: 40 adults (20 F, 20 M) randomized, stratified by sex, to **Protein** or **Placebo** during lower-body resistance training, measured at weeks 0, 6 and 12.
+
+- **Primary outcome**: vastus lateralis CSA (cm²) by panoramic ultrasound, 3 images per visit.
+- **Secondary outcomes**: DXA leg lean mass (kg) and leg press 1RM (kg).
+- **Missing data**: 3 withdrawals before week 12, 2 missed week-6 visits, 1 unusable image, 1 skipped 1RM.
+
+## Modules
+
+| | Module | Try it |
+|---|---|---|
+| 1 | [Why mixed models?](L1.qmd) | Pseudoreplication simulator |
+| 2 | [Random intercepts and slopes](L2.qmd) | Shrinkage explorer |
+| 3 | [Modelling the RCT](L3.qmd) | Compare five ways of estimating the treatment effect |
+| 4 | [Inference and diagnostics](L4.qmd) | Raw vs log scale residuals, MMRM |
+| 5 | [Nesting, multiple outcomes and power](L5.qmd) | Power calculator |
+| 6 | [Capstone](L6.qmd) | Full-analysis sandbox |
+
+The full written notes, mini-projects and reflections live in the Obsidian course folder; these pages cover the hands-on part.
+
+## Tips
+
+- Pages load R once; the first visit is slow, later ones are faster.
+- **Start Over** on any box restores the original code.
+- Heavy boxes (bootstraps, power simulations) can take 10–60 seconds. The button shows a spinner while R works.
+- Works best in Chrome, Edge, Firefox or Safari on a laptop. It runs on phones too, just more slowly.

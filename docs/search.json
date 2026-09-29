@@ -1,0 +1,65 @@
+[
+  {
+    "objectID": "L1.html",
+    "href": "L1.html",
+    "title": "1 · Why mixed models?",
+    "section": "",
+    "text": "Course data (loads automatically; click to see the code)\n\n\n\n\n\nR runs inside your browser. The first visit downloads R and the packages, which takes 20–40 seconds; after that the browser caches them. Wait for this block to finish before running exercises.\nEvery row in a hypertrophy dataset belongs to someone. Three ultrasound images from one visit are not three participants, and a participant’s week-12 CSA is not independent of their week-0 CSA. lm() assumes every row is independent. Get that wrong in one direction and your p-values are far too small (pseudoreplication). Get it wrong in the other and you throw away the within-person information that makes a repeated-measures trial powerful."
+  },
+  {
+    "objectID": "L1.html#levels-and-units",
+    "href": "L1.html#levels-and-units",
+    "title": "1 · Why mixed models?",
+    "section": "Levels and units",
+    "text": "Levels and units\n\n\n\nLevel\nUnit\nn here\nWhat varies\n\n\n\n\n4\nArm\n2\nTreatment (randomized)\n\n\n3\nParticipant\n40\nSex, baseline size, individual response\n\n\n2\nVisit\n115\nWeek, day-to-day hydration, probe placement\n\n\n1\nImage\n344\nImage-to-image measurement error\n\n\n\nThe independent unit for a treatment effect is the level at which treatment was randomized: the participant. You have 40 of those, not 344."
+  },
+  {
+    "objectID": "L1.html#explore-what-pseudoreplication-does",
+    "href": "L1.html#explore-what-pseudoreplication-does",
+    "title": "1 · Why mixed models?",
+    "section": "Explore: what pseudoreplication does",
+    "text": "Explore: what pseudoreplication does\nEach simulated experiment below has no true group difference. It compares two groups with a t-test on every image (pseudoreplication) and with a t-test on participant means (correct). Move the sliders and press Run Code to see how often each test gives a false positive.\n\nviewof n_per = Inputs.range([4, 20], {value: 10, step: 1, label: \"Participants per group\"})\nviewof k_img = Inputs.range([1, 10], {value: 3, step: 1, label: \"Images per participant\"})\nviewof icc_target = Inputs.range([0, 0.99], {value: 0.9, step: 0.01, label: \"ICC\"})\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nWith 1 image per participant the two tests agree. The higher the ICC and the more images, the worse the image-level test gets, because extra images of the same muscle add almost no new information."
+  },
+  {
+    "objectID": "L1.html#exercises",
+    "href": "L1.html#exercises",
+    "title": "1 · Why mixed models?",
+    "section": "Exercises",
+    "text": "Exercises\nAll exercises can see the course data already loaded above: img (one row per image), sess (one row per visit, lean mass and 1RM) and csa (the 3 images per visit averaged).\n\nQ1 — Know your data\nHow many visits are there per arm and week, and which participants are missing a visit?\n\n\n\n\n\n\n\n\n\nCount by Week in the first line. Everyone should have 3 visits, so keep rows with n &lt; 3.\n\n\nsess |&gt; count(Group, Week)\nsess |&gt; count(ID) |&gt; filter(n &lt; 3)\ncsa  |&gt; filter(n_img &lt; 3)      # the visit with a missing image\nPlacebo has 20 / 19 / 20 visits and Protein 20 / 19 / 17 at weeks 0 / 6 / 12. P12 and P26 missed week 6; P07, P18 and P33 have no week-12 visit. P04’s week-6 visit has 2 images. A complete-case repeated-measures ANOVA would drop all 5 of these participants.\n\n\n\nQ2 — Spaghetti plot\nPlot VL CSA against week, one line per participant, faceted by arm, with the arm mean overlaid.\n\n\n\n\n\n\n\n\n\nLines are grouped by participant (ID) and faceted by arm (Group).\n\n\nggplot(csa, aes(Week, VL_CSA_cm2)) +\n  geom_line(aes(group = ID, colour = Sex), alpha = 0.5) +\n  stat_summary(fun = mean, geom = \"line\", linewidth = 1.2) +\n  facet_wrap(~ Group) +\n  scale_x_continuous(breaks = c(0, 6, 12)) +\n  theme_bw()\nPeople start anywhere from about 15 to 33 cm² (men about 23–33, women about 15–27), but almost every line rises gently and nearly in parallel by 1–2 cm². The treatment question is about the slopes, which are small compared with the vertical spread between people.\n\n\n\nQ3 — Three analyses of one question\nThe trial question is the GroupProtein:Week_f12 coefficient: extra change to week 12 with Protein. Fit it three ways and compare estimates and SEs for that term and for GroupProtein (the baseline difference).\n\n\n\n\n\n\n\n\n\nThe first model uses the image-level data frame img. The random intercept is for participant, ID.\n\n\nf_img &lt;- lm(VL_CSA_cm2 ~ Group * Week_f + Sex, data = img)\nf_vis &lt;- lm(VL_CSA_cm2 ~ Group * Week_f + Sex, data = csa)\nf_lmm &lt;- lmer(VL_CSA_cm2 ~ Group * Week_f + Sex + (1 | ID), data = csa)\n\n\n\nModel\nBaseline diff (SE)\nDiff in change (SE)\n\n\n\n\nlm, 344 images\n0.902 (0.538)\n0.701 (0.777)\n\n\nlm, 115 visits\n0.902 (0.946)\n0.701 (1.367)\n\n\nlmer\n0.902 (0.948)\n0.990 (0.282)\n\n\n\nThe image-level lm SE for the baseline difference is too small because it counts every image as a new person (pseudoreplication). For the difference in change, both lm fits are 3–5× less precise than the LMM, because the ~3 cm² between-person spread sits in their residual. The estimate also shifts (0.70 vs 0.99), because with dropout the unpaired lm compares different people at week 0 and week 12.\n\n\n\nQ4 — ICC\nFit an intercept-only random-intercept model to csa and compute the ICC.\n\n\n\n\n\n\n\n\n\nThe function is icc().\n\n\nperformance::icc(fit0)\nParticipant SD ≈ 4.04 cm², residual SD ≈ 1.00 cm², ICC ≈ 0.94. In plain language: 94% of the variation in CSA values is people being different sizes; only 6% is change within people plus measurement noise. Each extra participant is worth far more than each extra scan of the same participant."
+  },
+  {
+    "objectID": "L1.html#mini-project",
+    "href": "L1.html#mini-project",
+    "title": "1 · Why mixed models?",
+    "section": "Mini-project",
+    "text": "Mini-project\nDo the same for leg lean mass (sess$Leg_Lean_Mass_kg): a spaghetti plot, the ICC, and a paragraph for a lab meeting on why the trial will be analysed with a mixed model. Use the sandbox below; it keeps your code between visits."
+  },
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "Linear Mixed Models for Hypertrophy Trials",
+    "section": "",
+    "text": "Every code box on these pages runs real R, inside your browser. There’s nothing to install. Edit the code, press Run Code, and use Show Hint and Show Solution when you’re stuck. Your edits are saved in this browser, so you can come back later."
+  },
+  {
+    "objectID": "index.html#the-case-study",
+    "href": "index.html#the-case-study",
+    "title": "Linear Mixed Models for Hypertrophy Trials",
+    "section": "The case study",
+    "text": "The case study\nA simulated 12-week RCT: 40 adults (20 F, 20 M) randomized, stratified by sex, to Protein or Placebo during lower-body resistance training, measured at weeks 0, 6 and 12.\n\nPrimary outcome: vastus lateralis CSA (cm²) by panoramic ultrasound, 3 images per visit.\nSecondary outcomes: DXA leg lean mass (kg) and leg press 1RM (kg).\nMissing data: 3 withdrawals before week 12, 2 missed week-6 visits, 1 unusable image, 1 skipped 1RM."
+  },
+  {
+    "objectID": "index.html#modules",
+    "href": "index.html#modules",
+    "title": "Linear Mixed Models for Hypertrophy Trials",
+    "section": "Modules",
+    "text": "Modules\n\n\n\n\nModule\nTry it\n\n\n\n\n1\nWhy mixed models?\nPseudoreplication simulator\n\n\n2\nRandom intercepts and slopes\nShrinkage explorer\n\n\n3\nModelling the RCT\nCompare five ways of estimating the treatment effect\n\n\n4\nInference and diagnostics\nRaw vs log scale residuals, MMRM\n\n\n5\nNesting, multiple outcomes and power\nPower calculator\n\n\n6\nCapstone\nFull-analysis sandbox\n\n\n\nThe full written notes, mini-projects and reflections live in the Obsidian course folder; these pages cover the hands-on part."
+  },
+  {
+    "objectID": "index.html#tips",
+    "href": "index.html#tips",
+    "title": "Linear Mixed Models for Hypertrophy Trials",
+    "section": "Tips",
+    "text": "Tips\n\nPages load R once; the first visit is slow, later ones are faster.\nStart Over on any box restores the original code.\nHeavy boxes (bootstraps, power simulations) can take 10–60 seconds. The button shows a spinner while R works.\nWorks best in Chrome, Edge, Firefox or Safari on a laptop. It runs on phones too, just more slowly."
+  }
+]
