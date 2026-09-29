@@ -32,7 +32,7 @@ Averaging the images first gives the same answer when every visit has the same n
 
 ## Explore: power calculator
 
-Simulate trials like this one (3 visits, random intercept) and estimate the power to detect a given difference in change at week 12. Defaults use the variance components from the course data. Each run fits `nsim` mixed models in your browser (about 0.25 s each), so press **Run Code** when you've set the sliders.
+Simulate trials like this one (3 visits, random intercept) and estimate the power to detect a given difference in change at week 12. Defaults use the variance components from the course data. Each run fits `nsim` mixed models in your browser (100 simulations take about 30–40 seconds), so press **Run Code** when you've set the sliders.
 
 ```{ojs}
 //| echo: false

@@ -106,7 +106,7 @@ Use `ddf = "Kenward-Roger"`. Satterthwaite: t ≈ 3.51 on ≈ 71 df, p ≈ 0.000
 
 ### Q2 — Three kinds of CI
 
-The bootstrap takes about 15 seconds in the browser.
+The bootstrap takes 20–40 seconds in the browser.
 
 ```{webr}
 #| exercise: l4q2
