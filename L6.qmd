@@ -1,0 +1,65 @@
+---
+title: "6 · Capstone"
+subtitle: "Write the plan, run the analysis, then check it against the truth"
+webr:
+  packages:
+    - dplyr
+    - tidyr
+    - ggplot2
+    - lme4
+    - lmerTest
+    - emmeans
+    - pbkrtest
+    - nlme
+---
+
+{{< include _extensions/live/_knitr.qmd >}}
+{{< include _setup.qmd >}}
+
+The capstone paths and rubric are in the Obsidian note. This page gives you an analysis workspace with everything loaded, and the answer key for Path B.
+
+1. Write a short statistical analysis plan first: estimand, primary model, df method, random-effects simplification rule, missing-data assumption, multiplicity strategy.
+2. Run it below, exactly as planned.
+3. Only then open the true simulation parameters and see how close you got.
+
+## Analysis template
+
+A complete primary analysis to start from. Change the outcome or model to match your plan.
+
+```{webr}
+#| caption: Primary analysis template
+#| max-lines: 40
+# 1. Counts by arm and visit
+print(with(csa, table(Group, Week)))
+
+# 2. Primary model
+fit <- lmer(VL_CSA_cm2 ~ Group * Week_f + Sex + (1 | ID), data = csa)
+
+# 3. Estimand: difference in change, week 0 -> 12
+contrast(emmeans(fit, ~ Group * Week_f),
+         interaction = c("revpairwise", "trt.vs.ctrl"), ref = 1) |>
+  summary(infer = TRUE)
+
+# 4. Variance components (supplementary table)
+as.data.frame(VarCorr(fit))[, c("grp", "sdcor")]
+```
+
+## Your workspace
+
+```{webr}
+#| caption: Workspace
+#| min-lines: 12
+# sensitivity analyses, secondary outcomes, figures...
+```
+
+## True simulation parameters
+
+::: {.callout-warning collapse="true"}
+## Open only after your analysis
+
+- **VL CSA**: Placebo +0.10 cm²/week; Protein an extra +0.06 cm²/week, so the true week-12 difference in change is **0.72 cm²**. Participant intercept SD 3.0, slope SD 0.045 cm²/week (0.54 per 12 weeks), visit SD 0.5, image SD 0.35. Men +7.5 cm².
+- **Leg lean mass**: Placebo +0.021 kg/week; Protein an extra +0.017 kg/week, so the true week-12 difference is **0.204 kg**. Residual SD 0.12 kg.
+- **Leg press 1RM** (log scale): Placebo +0.25 by week 12, Protein +0.28, so the true ratio of fold-changes is **exp(0.03) ≈ 1.030**. 60% of the gain is reached by week 6.
+
+Did your 95% CIs contain the true values? The CSA estimate (≈ 0.99) is larger than the truth (0.72), although its CI (0.43 to 1.55) covers it. That's ordinary sampling variation in one trial of 40 people, and a reminder to plan the next study's sample size around a conservative effect, not the last point estimate.
+:::

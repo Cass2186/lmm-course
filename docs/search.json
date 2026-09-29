@@ -1,38 +1,143 @@
 [
   {
-    "objectID": "L1.html",
-    "href": "L1.html",
-    "title": "1 · Why mixed models?",
+    "objectID": "L5.html",
+    "href": "L5.html",
+    "title": "5 · Nesting, multiple outcomes and power",
     "section": "",
-    "text": "Course data (loads automatically; click to see the code)\n\n\n\n\n\nR runs inside your browser. The first visit downloads R and the packages, which takes 20–40 seconds; after that the browser caches them. Wait for this block to finish before running exercises.\nEvery row in a hypertrophy dataset belongs to someone. Three ultrasound images from one visit are not three participants, and a participant’s week-12 CSA is not independent of their week-0 CSA. lm() assumes every row is independent. Get that wrong in one direction and your p-values are far too small (pseudoreplication). Get it wrong in the other and you throw away the within-person information that makes a repeated-measures trial powerful."
+    "text": "Course data (loads automatically; click to see the code)\n\n\n\n\n\nR runs inside your browser. The first visit downloads R and the packages, which takes 20–40 seconds; after that the browser caches them. Wait for this block to finish before running exercises.\nThe ultrasound data have three layers: participants, visits within participants (day-to-day variation) and images within visits (measurement error). The matching model is\nAveraging the images first gives the same answer when every visit has the same number of images and there are no image-level predictors. Leaving out the visit level, i.e. (1 | ID) on image rows, is pseudoreplication at the visit level."
   },
   {
-    "objectID": "L1.html#levels-and-units",
-    "href": "L1.html#levels-and-units",
-    "title": "1 · Why mixed models?",
-    "section": "Levels and units",
-    "text": "Levels and units\n\n\n\nLevel\nUnit\nn here\nWhat varies\n\n\n\n\n4\nArm\n2\nTreatment (randomized)\n\n\n3\nParticipant\n40\nSex, baseline size, individual response\n\n\n2\nVisit\n115\nWeek, day-to-day hydration, probe placement\n\n\n1\nImage\n344\nImage-to-image measurement error\n\n\n\nThe independent unit for a treatment effect is the level at which treatment was randomized: the participant. You have 40 of those, not 344."
+    "objectID": "L5.html#explore-power-calculator",
+    "href": "L5.html#explore-power-calculator",
+    "title": "5 · Nesting, multiple outcomes and power",
+    "section": "Explore: power calculator",
+    "text": "Explore: power calculator\nSimulate trials like this one (3 visits, random intercept) and estimate the power to detect a given difference in change at week 12. Defaults use the variance components from the course data. Each run fits nsim mixed models in your browser (about 0.25 s each), so press Run Code when you’ve set the sliders.\n\nviewof pw_n     = Inputs.range([6, 60], {value: 20, step: 1, label: \"Participants per arm\"})\nviewof pw_delta = Inputs.range([0, 2], {value: 0.6, step: 0.05, label: \"True difference in change (cm²)\"})\nviewof pw_sdres = Inputs.range([0.2, 1.2], {value: 0.61, step: 0.01, label: \"Within-person residual SD\"})\nviewof pw_drop  = Inputs.range([0, 0.3], {value: 0.1, step: 0.01, label: \"Dropout before week 12\"})\nviewof pw_nsim  = Inputs.range([50, 400], {value: 100, step: 50, label: \"Simulations\"})\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nSet the difference to 0 to check the Type I error: it should be close to 0.05. Then halve the residual SD and see how much power improves. Reducing day-to-day measurement noise (standardized scan conditions) is often cheaper than recruiting more people."
   },
   {
-    "objectID": "L1.html#explore-what-pseudoreplication-does",
-    "href": "L1.html#explore-what-pseudoreplication-does",
-    "title": "1 · Why mixed models?",
-    "section": "Explore: what pseudoreplication does",
-    "text": "Explore: what pseudoreplication does\nEach simulated experiment below has no true group difference. It compares two groups with a t-test on every image (pseudoreplication) and with a t-test on participant means (correct). Move the sliders and press Run Code to see how often each test gives a false positive.\n\nviewof n_per = Inputs.range([4, 20], {value: 10, step: 1, label: \"Participants per group\"})\nviewof k_img = Inputs.range([1, 10], {value: 3, step: 1, label: \"Images per participant\"})\nviewof icc_target = Inputs.range([0, 0.99], {value: 0.9, step: 0.01, label: \"ICC\"})\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nWith 1 image per participant the two tests agree. The higher the ICC and the more images, the worse the image-level test gets, because extra images of the same muscle add almost no new information."
-  },
-  {
-    "objectID": "L1.html#exercises",
-    "href": "L1.html#exercises",
-    "title": "1 · Why mixed models?",
+    "objectID": "L5.html#exercises",
+    "href": "L5.html#exercises",
+    "title": "5 · Nesting, multiple outcomes and power",
     "section": "Exercises",
-    "text": "Exercises\nAll exercises can see the course data already loaded above: img (one row per image), sess (one row per visit, lean mass and 1RM) and csa (the 3 images per visit averaged).\n\nQ1 — Know your data\nHow many visits are there per arm and week, and which participants are missing a visit?\n\n\n\n\n\n\n\n\n\nCount by Week in the first line. Everyone should have 3 visits, so keep rows with n &lt; 3.\n\n\nsess |&gt; count(Group, Week)\nsess |&gt; count(ID) |&gt; filter(n &lt; 3)\ncsa  |&gt; filter(n_img &lt; 3)      # the visit with a missing image\nPlacebo has 20 / 19 / 20 visits and Protein 20 / 19 / 17 at weeks 0 / 6 / 12. P12 and P26 missed week 6; P07, P18 and P33 have no week-12 visit. P04’s week-6 visit has 2 images. A complete-case repeated-measures ANOVA would drop all 5 of these participants.\n\n\n\nQ2 — Spaghetti plot\nPlot VL CSA against week, one line per participant, faceted by arm, with the arm mean overlaid.\n\n\n\n\n\n\n\n\n\nLines are grouped by participant (ID) and faceted by arm (Group).\n\n\nggplot(csa, aes(Week, VL_CSA_cm2)) +\n  geom_line(aes(group = ID, colour = Sex), alpha = 0.5) +\n  stat_summary(fun = mean, geom = \"line\", linewidth = 1.2) +\n  facet_wrap(~ Group) +\n  scale_x_continuous(breaks = c(0, 6, 12)) +\n  theme_bw()\nPeople start anywhere from about 15 to 33 cm² (men about 23–33, women about 15–27), but almost every line rises gently and nearly in parallel by 1–2 cm². The treatment question is about the slopes, which are small compared with the vertical spread between people.\n\n\n\nQ3 — Three analyses of one question\nThe trial question is the GroupProtein:Week_f12 coefficient: extra change to week 12 with Protein. Fit it three ways and compare estimates and SEs for that term and for GroupProtein (the baseline difference).\n\n\n\n\n\n\n\n\n\nThe first model uses the image-level data frame img. The random intercept is for participant, ID.\n\n\nf_img &lt;- lm(VL_CSA_cm2 ~ Group * Week_f + Sex, data = img)\nf_vis &lt;- lm(VL_CSA_cm2 ~ Group * Week_f + Sex, data = csa)\nf_lmm &lt;- lmer(VL_CSA_cm2 ~ Group * Week_f + Sex + (1 | ID), data = csa)\n\n\n\nModel\nBaseline diff (SE)\nDiff in change (SE)\n\n\n\n\nlm, 344 images\n0.902 (0.538)\n0.701 (0.777)\n\n\nlm, 115 visits\n0.902 (0.946)\n0.701 (1.367)\n\n\nlmer\n0.902 (0.948)\n0.990 (0.282)\n\n\n\nThe image-level lm SE for the baseline difference is too small because it counts every image as a new person (pseudoreplication). For the difference in change, both lm fits are 3–5× less precise than the LMM, because the ~3 cm² between-person spread sits in their residual. The estimate also shifts (0.70 vs 0.99), because with dropout the unpaired lm compares different people at week 0 and week 12.\n\n\n\nQ4 — ICC\nFit an intercept-only random-intercept model to csa and compute the ICC.\n\n\n\n\n\n\n\n\n\nThe function is icc().\n\n\nperformance::icc(fit0)\nParticipant SD ≈ 4.04 cm², residual SD ≈ 1.00 cm², ICC ≈ 0.94. In plain language: 94% of the variation in CSA values is people being different sizes; only 6% is change within people plus measurement noise. Each extra participant is worth far more than each extra scan of the same participant."
+    "text": "Exercises\n\nQ1 — Nested, averaged and wrong\n\n\n\n\n\n\n\n\n\nNest visits in participants: (1 | ID/Week_f). Nested and averaged both give 0.990 (SE 0.282, df ≈ 71). The wrong model gives 0.994 with SE 0.159 and df ≈ 300: about 44% too small, because it treats day-to-day variation as if it were averaged over 3 independent visits.\n\n\n\nQ2 — Where does the noise come from?\n\n\n\n\n\n\n\n\n\nDivide by k. Participant SD ≈ 2.94, visit SD ≈ 0.58, image SD ≈ 0.35 cm². A visit mean has SD ≈ 0.67 with 1 image, 0.61 with 3 and 0.60 with 6. More images barely help because day-to-day variance dominates. A second baseline visit, or tighter pre-scan standardization, is the better investment.\n\n\n\nQ3 — Secondary outcomes and multiplicity\n\n\n\n\n\n\n\n\n\nmethod = \"holm\". Lean mass +0.16 kg (0.03 to 0.29), p ≈ 0.016 (Holm 0.032); 1RM ratio 1.026 (0.968 to 1.087), p ≈ 0.38. A fixed sequence CSA → lean mass → 1RM gives the same conclusions: Protein increased muscle size by two measures, with no detectable effect on strength.\n\n\n\nQ4 — Results figure\n\n\n\n\n\n\n\n\n\nRun it as is, then try adding a second panel of change from baseline by arm, where the treatment effect is actually visible."
   },
   {
-    "objectID": "L1.html#mini-project",
-    "href": "L1.html#mini-project",
-    "title": "1 · Why mixed models?",
-    "section": "Mini-project",
-    "text": "Mini-project\nDo the same for leg lean mass (sess$Leg_Lean_Mass_kg): a spaghetti plot, the ICC, and a paragraph for a lab meeting on why the trial will be analysed with a mixed model. Use the sandbox below; it keeps your code between visits."
+    "objectID": "L5.html#sandbox",
+    "href": "L5.html#sandbox",
+    "title": "5 · Nesting, multiple outcomes and power",
+    "section": "Sandbox",
+    "text": "Sandbox"
+  },
+  {
+    "objectID": "L2.html",
+    "href": "L2.html",
+    "title": "2 · Random intercepts and slopes",
+    "section": "",
+    "text": "Course data (loads automatically; click to see the code)\n\n\n\n\n\nR runs inside your browser. The first visit downloads R and the packages, which takes 20–40 seconds; after that the browser caches them. Wait for this block to finish before running exercises.\nThe random-effects part of the formula tells the model which rows belong together and how they are allowed to differ. Too little structure and you’re back to pseudoreplication; too much and the model can’t be estimated.\n\\[y_{tj} = (\\beta_0 + u_{0j}) + (\\beta_1 + u_{1j})\\,t + \\varepsilon_{tj}\\]\nTime is used here as Week12 = Week / 12, so a slope means “change over the whole 12-week intervention”. Rescaling like this keeps the optimizer happy and is easier to read."
+  },
+  {
+    "objectID": "L2.html#explore-shrinkage",
+    "href": "L2.html#explore-shrinkage",
+    "title": "2 · Random intercepts and slopes",
+    "section": "Explore: shrinkage",
+    "text": "Explore: shrinkage\nThe mixed model’s participant-specific slopes (BLUPs) are pulled toward the average, more so when a person’s own data are noisy. Add extra measurement noise, or take away people’s week-6 visit, and watch what happens to the pooled slopes and to σ₁.\n\nviewof extra_sd = Inputs.range([0, 1.5], {value: 0, step: 0.05, label: \"Extra visit noise SD (cm²)\"})\nviewof n_two = Inputs.range([0, 30], {value: 0, step: 1, label: \"Participants who lose their week-6 visit\"})\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nPoints on the dashed line would mean no shrinkage; the green line is the average slope. As noise rises, the pooled slopes collapse toward the average, and eventually σ₁ hits zero (a singular fit). This is why raw change scores are a poor way to label “non-responders”."
+  },
+  {
+    "objectID": "L2.html#exercises",
+    "href": "L2.html#exercises",
+    "title": "2 · Random intercepts and slopes",
+    "section": "Exercises",
+    "text": "Exercises\n\nQ1 — Random intercept\nFit VL_CSA_cm2 ~ Week + (1 | ID) and interpret the fixed slope, the participant SD and the residual SD.\n\n\n\n\n\n\n\n\n\nm_ri &lt;- lmer(VL_CSA_cm2 ~ Week + (1 | ID), data = csa)\nIntercept ≈ 24.88 cm² (average at week 0); Week ≈ 0.127 cm²/week (≈ 1.5 cm² over 12 weeks); participant SD ≈ 4.07; residual SD ≈ 0.66. This model assumes everyone grows at the same rate.\n\n\n\nQ2 — Add a random slope\nFit a random intercept and slope for Week12, then compare with the random-intercept model by LRT. Why is refit = FALSE fine here?\n\n\n\n\n\n\n\n\n\nThe random slope term is Week12. The two models have identical fixed effects, so REML fits can be compared directly: refit = FALSE.\n\n\nm_rs &lt;- lmer(VL_CSA_cm2 ~ Week12 + (1 + Week12 | ID), data = csa)\nanova(m_rs, m_ri12, refit = FALSE)\nSlope SD ≈ 0.92 cm² per 12 weeks, correlation ≈ 0.08, residual SD drops from ≈ 0.66 to ≈ 0.47. LRT χ²(2) ≈ 11.4, p ≈ 0.003 (conservative, because σ₁ = 0 lies on the boundary). The random slope is supported.\n\n\n\nQ3 — Shrinkage in numbers\nCompare the SD of raw (per-person lm) slopes with the SD of the mixed-model slopes, and look up participants P03 and P33.\n\n\n\n\n\n\n\n\n\nSD of raw slopes ≈ 1.14, of pooled slopes ≈ 0.74; σ₁ ≈ 0.92 sits between them. P03’s raw slope is ≈ −0.64 (an apparent “non-responder”) but the pooled estimate is ≈ +0.11. P33 has only 2 visits and moves from ≈ 2.91 to ≈ 2.04, about two-thirds of the way back to the mean.\n\n\n\nQ4 — A singular fit\nTry a random slope for leg lean mass. What message do you get, and what do the variance components show?\n\n\n\n\n\n\n\n\n\nboundary (singular) fit: the slope SD is tiny (≈ 0.045 kg per 12 weeks) and the correlation is exactly −1. LRT χ²(2) ≈ 1.9, p ≈ 0.39. Use the random-intercept model and report why the slope was dropped. With three DXA scans and a residual SD of ≈ 0.14 kg, individual differences in change can’t be separated from noise.\n\n\n\nQ5 — REML vs ML\nFit VL_CSA_cm2 ~ Group * Week12 + Sex + (1 + Week12 | ID) with REML and ML, and compare variance components and SEs.\n\n\n\n\n\n\n\n\n\nFixed estimates barely move (GroupProtein:Week12 ≈ 1.02 in both), but ML variance components are smaller (participant SD 2.86 vs 2.97; slope SD 0.76 vs 0.79), so ML SEs are slightly smaller (0.324 vs 0.332). Report REML; use ML (which anova() does automatically) when comparing models with different fixed effects."
+  },
+  {
+    "objectID": "L2.html#sandbox",
+    "href": "L2.html#sandbox",
+    "title": "2 · Random intercepts and slopes",
+    "section": "Sandbox",
+    "text": "Sandbox"
+  },
+  {
+    "objectID": "L3.html",
+    "href": "L3.html",
+    "title": "3 · Modelling the RCT",
+    "section": "",
+    "text": "Course data (loads automatically; click to see the code)\n\n\n\n\n\nR runs inside your browser. The first visit downloads R and the packages, which takes 20–40 seconds; after that the browser caches them. Wait for this block to finish before running exercises.\nWith a few fixed visits, treat time as a factor (Week_f). The primary model is\nemmeans gives the same number with clearer labels. Note that emmeans uses Kenward–Roger df, while summary() uses Satterthwaite; they agree closely here."
+  },
+  {
+    "objectID": "L3.html#explore-five-ways-to-answer-the-trial-question",
+    "href": "L3.html#explore-five-ways-to-answer-the-trial-question",
+    "title": "3 · Modelling the RCT",
+    "section": "Explore: five ways to answer the trial question",
+    "text": "Explore: five ways to answer the trial question\nPick an outcome. Each row is a different analysis of the week-12 treatment effect, with its 95% CI. Only some of them estimate the estimand efficiently.\n\nviewof outcome = Inputs.select(\n  new Map([[\"VL CSA (cm²)\", \"csa\"], [\"Leg lean mass (kg)\", \"lean\"], [\"Leg press 1RM (log scale)\", \"rm\"]]),\n  {label: \"Outcome\"})\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nThe “arms at week 12 only” row is a between-person comparison, so its CI is ~3× wider and it includes the chance baseline imbalance. The difference-in-change, cLDA and ANCOVA analyses all use each person as their own control and agree closely, as they should in a randomized trial. For 1RM the estimates are log ratios; exp() them for fold-change ratios."
+  },
+  {
+    "objectID": "L3.html#exercises",
+    "href": "L3.html#exercises",
+    "title": "3 · Modelling the RCT",
+    "section": "Exercises",
+    "text": "Exercises\n\nQ1 — Fit and read the primary model\n\n\n\n\n\n\n\n\n\nfit &lt;- lmer(VL_CSA_cm2 ~ Group * Week_f + Sex + (1 | ID), data = csa)\nGroupProtein:Week_f12 ≈ 0.99 (SE 0.28, p ≈ 0.0008): Protein gained ~1 cm² more than Placebo by week 12. Week_f12 ≈ 1.05 is Placebo’s own gain from training. The omnibus Group:Week_f F-test (F ≈ 6.20, p ≈ 0.003) asks whether trajectories differ at all; report the specific week-12 contrast with its CI instead.\n\n\n\nQ2 — Changes and the difference in change\nGet each arm’s change from baseline, then the Protein − Placebo difference in change.\n\n\n\n\n\n\n\n\n\n\"revpairwise\" gives Protein − Placebo; \"pairwise\" would give Placebo − Protein.\n\n\n\n\n\n\nChange wk 0→6\nChange wk 0→12\n\n\n\n\nPlacebo\n0.64 [0.24, 1.03]\n1.05 [0.66, 1.43]\n\n\nProtein\n1.18 [0.79, 1.58]\n2.04 [1.63, 2.45]\n\n\nProtein − Placebo\n0.55 [−0.01, 1.10]\n0.99 [0.43, 1.55]\n\n\n\nThat’s ≈ 4% of the baseline mean CSA (24.8 cm²).\n\n\n\nQ3 — Constrained baseline (cLDA)\nFit cLDA by replacing the Group main effect with hand-made indicators, so both arms share one baseline mean.\n\n\n\n\n\n\n\n\n\nProt_wk12 ≈ 1.03 (SE 0.28), almost identical to the unconstrained 0.99 (0.28) and ANCOVA 1.03 (0.29). cLDA partially corrects the chance ≈ 0.9 cm² baseline imbalance.\n\n\n\nQ4 — Completers only\nRefit the primary model using only the 35 participants with all three visits. Compare with the all-randomized estimate.\n\n\n\n\n\n\n\n\n\nCompleters: 0.90 (SE 0.30, 95% CI 0.30 to 1.50) vs all randomized 0.99 (SE 0.28, 0.43 to 1.55). The dropout here was random, so they agree. The all-data LMM assumes missing at random; it would be biased if, say, Protein participants who weren’t growing were more likely to quit.\n\n\n\nQ5 — Factor or linear time?\n\n\n\n\n\n\n\n\n\nLRT χ²(2) ≈ 1.34, p ≈ 0.51, and AIC favours linear time by ≈ 2.7; the linear model’s 12-week difference is ≈ 1.00 (SE 0.28). Still, don’t switch the primary analysis after seeing the data; report linear time as supportive."
+  },
+  {
+    "objectID": "L3.html#sandbox",
+    "href": "L3.html#sandbox",
+    "title": "3 · Modelling the RCT",
+    "section": "Sandbox",
+    "text": "Sandbox"
+  },
+  {
+    "objectID": "L4.html",
+    "href": "L4.html",
+    "title": "4 · Inference and diagnostics",
+    "section": "",
+    "text": "Course data (loads automatically; click to see the code)\n\n\n\n\n\nR runs inside your browser. The first visit downloads R and the packages, which takes 20–40 seconds; after that the browser caches them. Wait for this block to finish before running exercises.\nFor Gaussian mixed models there is no exact denominator df, so there are several reasonable ways to get a p-value:\nWith ~40 participants they usually agree to the second decimal. Pick one in the analysis plan.\nA random intercept implies compound symmetry: every pair of visits is equally correlated. An MMRM drops the random effects and gives the residuals an unstructured covariance instead. That’s the standard primary analysis for regulatory trials with fixed visits."
+  },
+  {
+    "objectID": "L4.html#explore-raw-or-log-scale",
+    "href": "L4.html#explore-raw-or-log-scale",
+    "title": "4 · Inference and diagnostics",
+    "section": "Explore: raw or log scale?",
+    "text": "Explore: raw or log scale?\nChoose an outcome and a scale. A fan shape in the residuals, or a bigger residual SD in men than women, means variability grows with the size of the outcome, and a log scale is usually the fix.\n\nviewof diag_outcome = Inputs.select(\n  new Map([[\"Leg press 1RM (kg)\", \"Leg_Press_1RM_kg\"], [\"Leg lean mass (kg)\", \"Leg_Lean_Mass_kg\"], [\"VL CSA (cm²)\", \"VL_CSA_cm2\"]]),\n  {label: \"Outcome\"})\nviewof diag_log = Inputs.radio([\"raw\", \"log\"], {value: \"raw\", label: \"Scale\"})\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nFor 1RM, the raw-scale residual SD is ≈ 10 kg in women vs ≈ 14 kg in men; on the log scale both are ≈ 0.05 (≈ 5% day-to-day variation). Lean mass and CSA look fine on either scale."
+  },
+  {
+    "objectID": "L4.html#exercises",
+    "href": "L4.html#exercises",
+    "title": "4 · Inference and diagnostics",
+    "section": "Exercises",
+    "text": "Exercises\nAll exercises use the primary model fit &lt;- lmer(VL_CSA_cm2 ~ Group * Week_f + Sex + (1 | ID), data = csa), which is created for you:\n\n\n\n\n\n\n\n\n\nQ1 — Three routes to a p-value\n\n\n\n\n\n\n\n\n\nUse ddf = \"Kenward-Roger\". Satterthwaite: t ≈ 3.51 on ≈ 71 df, p ≈ 0.00079; Kenward–Roger is essentially identical. The LRT for the whole interaction gives χ²(2) ≈ 12.1, p ≈ 0.0024, vs the F-test’s p ≈ 0.0033. The LRT is a little optimistic because it treats variance parameters as known; with 10 participants the difference would matter.\n\n\n\nQ2 — Three kinds of CI\nThe bootstrap takes about 15 seconds in the browser.\n\n\n\n\n\n\n\n\n\nWald 0.437 to 1.543; profile 0.444 to 1.535; parametric bootstrap ≈ 0.41 to 1.50 with set.seed(1) and 200 simulations (it varies with the seed and nsim; use ≥ 1000 for a paper). emmeans with KR df gives 0.427 to 1.553. A warning that a few bootstrap refits didn’t converge is normal.\n\n\n\nQ3 — Leave one participant out\nRefit the model 40 times, each time without one participant. Does anyone drive the result?\n\n\n\n\n\n\n\n\n\nFilter with ID != id. The estimate ranges from ≈ 0.87 (dropping P25) to ≈ 1.13 (dropping P21), so no single participant drives the result.\n\n\n\nQ4 — Log-scale 1RM as % change\n\n\n\n\n\n\n\n\n\ntype = \"response\" back-transforms to ratios. Week-12 gains: Placebo ×1.30 (+30%), Protein ×1.33 (+33%). Ratio of fold-changes 1.026 (95% CI 0.968 to 1.087): no evidence that protein affected strength, and the CI rules out a large effect.\n\n\n\nQ5 — MMRM vs random intercept\n\n\n\n\n\n\n\n\n\nCS vs unstructured: χ²(4) ≈ 8.98, p ≈ 0.062. The unstructured correlations fall with distance between visits (0.97, 0.96 for adjacent visits; 0.94 for week 0 vs 12), which is what individual growth rates produce. The MMRM week-12 effect is 0.993 (SE 0.336) vs 0.990 (0.282) under compound symmetry. The random-intercept SE is too small when the week-0/week-12 correlation is lower than CS assumes, which is the argument for prespecifying an MMRM (or a random slope)."
+  },
+  {
+    "objectID": "L4.html#sandbox",
+    "href": "L4.html#sandbox",
+    "title": "4 · Inference and diagnostics",
+    "section": "Sandbox",
+    "text": "Sandbox"
+  },
+  {
+    "objectID": "L6.html",
+    "href": "L6.html",
+    "title": "6 · Capstone",
+    "section": "",
+    "text": "Course data (loads automatically; click to see the code)\n\n\n\n\n\nR runs inside your browser. The first visit downloads R and the packages, which takes 20–40 seconds; after that the browser caches them. Wait for this block to finish before running exercises.\nThe capstone paths and rubric are in the Obsidian note. This page gives you an analysis workspace with everything loaded, and the answer key for Path B."
+  },
+  {
+    "objectID": "L6.html#analysis-template",
+    "href": "L6.html#analysis-template",
+    "title": "6 · Capstone",
+    "section": "Analysis template",
+    "text": "Analysis template\nA complete primary analysis to start from. Change the outcome or model to match your plan."
+  },
+  {
+    "objectID": "L6.html#your-workspace",
+    "href": "L6.html#your-workspace",
+    "title": "6 · Capstone",
+    "section": "Your workspace",
+    "text": "Your workspace"
+  },
+  {
+    "objectID": "L6.html#true-simulation-parameters",
+    "href": "L6.html#true-simulation-parameters",
+    "title": "6 · Capstone",
+    "section": "True simulation parameters",
+    "text": "True simulation parameters\n\n\n\n\n\n\nOpen only after your analysis\n\n\n\n\n\n\nVL CSA: Placebo +0.10 cm²/week; Protein an extra +0.06 cm²/week, so the true week-12 difference in change is 0.72 cm². Participant intercept SD 3.0, slope SD 0.045 cm²/week (0.54 per 12 weeks), visit SD 0.5, image SD 0.35. Men +7.5 cm².\nLeg lean mass: Placebo +0.021 kg/week; Protein an extra +0.017 kg/week, so the true week-12 difference is 0.204 kg. Residual SD 0.12 kg.\nLeg press 1RM (log scale): Placebo +0.25 by week 12, Protein +0.28, so the true ratio of fold-changes is exp(0.03) ≈ 1.030. 60% of the gain is reached by week 6.\n\nDid your 95% CIs contain the true values? The CSA estimate (≈ 0.99) is larger than the truth (0.72), although its CI (0.43 to 1.55) covers it. That’s ordinary sampling variation in one trial of 40 people, and a reminder to plan the next study’s sample size around a conservative effect, not the last point estimate."
   },
   {
     "objectID": "index.html",
@@ -61,5 +166,40 @@
     "title": "Linear Mixed Models for Hypertrophy Trials",
     "section": "Tips",
     "text": "Tips\n\nPages load R once; the first visit is slow, later ones are faster.\nStart Over on any box restores the original code.\nHeavy boxes (bootstraps, power simulations) can take 10–60 seconds. The button shows a spinner while R works.\nWorks best in Chrome, Edge, Firefox or Safari on a laptop. It runs on phones too, just more slowly."
+  },
+  {
+    "objectID": "L1.html",
+    "href": "L1.html",
+    "title": "1 · Why mixed models?",
+    "section": "",
+    "text": "Course data (loads automatically; click to see the code)\n\n\n\n\n\nR runs inside your browser. The first visit downloads R and the packages, which takes 20–40 seconds; after that the browser caches them. Wait for this block to finish before running exercises.\nEvery row in a hypertrophy dataset belongs to someone. Three ultrasound images from one visit are not three participants, and a participant’s week-12 CSA is not independent of their week-0 CSA. lm() assumes every row is independent. Get that wrong in one direction and your p-values are far too small (pseudoreplication). Get it wrong in the other and you throw away the within-person information that makes a repeated-measures trial powerful."
+  },
+  {
+    "objectID": "L1.html#levels-and-units",
+    "href": "L1.html#levels-and-units",
+    "title": "1 · Why mixed models?",
+    "section": "Levels and units",
+    "text": "Levels and units\n\n\n\nLevel\nUnit\nn here\nWhat varies\n\n\n\n\n4\nArm\n2\nTreatment (randomized)\n\n\n3\nParticipant\n40\nSex, baseline size, individual response\n\n\n2\nVisit\n115\nWeek, day-to-day hydration, probe placement\n\n\n1\nImage\n344\nImage-to-image measurement error\n\n\n\nThe independent unit for a treatment effect is the level at which treatment was randomized: the participant. You have 40 of those, not 344."
+  },
+  {
+    "objectID": "L1.html#explore-what-pseudoreplication-does",
+    "href": "L1.html#explore-what-pseudoreplication-does",
+    "title": "1 · Why mixed models?",
+    "section": "Explore: what pseudoreplication does",
+    "text": "Explore: what pseudoreplication does\nEach simulated experiment below has no true group difference. It compares two groups with a t-test on every image (pseudoreplication) and with a t-test on participant means (correct). Move the sliders to see how often each test gives a false positive; the result updates each time.\n\nviewof n_per = Inputs.range([4, 20], {value: 10, step: 1, label: \"Participants per group\"})\nviewof k_img = Inputs.range([1, 10], {value: 3, step: 1, label: \"Images per participant\"})\nviewof icc_target = Inputs.range([0, 0.99], {value: 0.9, step: 0.01, label: \"ICC\"})\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nWith 1 image per participant the two tests agree. The higher the ICC and the more images, the worse the image-level test gets, because extra images of the same muscle add almost no new information."
+  },
+  {
+    "objectID": "L1.html#exercises",
+    "href": "L1.html#exercises",
+    "title": "1 · Why mixed models?",
+    "section": "Exercises",
+    "text": "Exercises\nAll exercises can see the course data already loaded above: img (one row per image), sess (one row per visit, lean mass and 1RM) and csa (the 3 images per visit averaged).\n\nQ1 — Know your data\nHow many visits are there per arm and week, and which participants are missing a visit?\n\n\n\n\n\n\n\n\n\nCount by Week in the first line. Everyone should have 3 visits, so keep rows with n &lt; 3.\n\n\nsess |&gt; count(Group, Week)\nsess |&gt; count(ID) |&gt; filter(n &lt; 3)\ncsa  |&gt; filter(n_img &lt; 3)      # the visit with a missing image\nPlacebo has 20 / 19 / 20 visits and Protein 20 / 19 / 17 at weeks 0 / 6 / 12. P12 and P26 missed week 6; P07, P18 and P33 have no week-12 visit. P04’s week-6 visit has 2 images. A complete-case repeated-measures ANOVA would drop all 5 of these participants.\n\n\n\nQ2 — Spaghetti plot\nPlot VL CSA against week, one line per participant, faceted by arm, with the arm mean overlaid.\n\n\n\n\n\n\n\n\n\nLines are grouped by participant (ID) and faceted by arm (Group).\n\n\nggplot(csa, aes(Week, VL_CSA_cm2)) +\n  geom_line(aes(group = ID, colour = Sex), alpha = 0.5) +\n  stat_summary(fun = mean, geom = \"line\", linewidth = 1.2) +\n  facet_wrap(~ Group) +\n  scale_x_continuous(breaks = c(0, 6, 12)) +\n  theme_bw()\nPeople start anywhere from about 15 to 33 cm² (men about 23–33, women about 15–27), but almost every line rises gently and nearly in parallel by 1–2 cm². The treatment question is about the slopes, which are small compared with the vertical spread between people.\n\n\n\nQ3 — Three analyses of one question\nThe trial question is the GroupProtein:Week_f12 coefficient: extra change to week 12 with Protein. Fit it three ways and compare estimates and SEs for that term and for GroupProtein (the baseline difference).\n\n\n\n\n\n\n\n\n\nThe first model uses the image-level data frame img. The random intercept is for participant, ID.\n\n\nf_img &lt;- lm(VL_CSA_cm2 ~ Group * Week_f + Sex, data = img)\nf_vis &lt;- lm(VL_CSA_cm2 ~ Group * Week_f + Sex, data = csa)\nf_lmm &lt;- lmer(VL_CSA_cm2 ~ Group * Week_f + Sex + (1 | ID), data = csa)\n\n\n\nModel\nBaseline diff (SE)\nDiff in change (SE)\n\n\n\n\nlm, 344 images\n0.902 (0.538)\n0.701 (0.777)\n\n\nlm, 115 visits\n0.902 (0.946)\n0.701 (1.367)\n\n\nlmer\n0.902 (0.948)\n0.990 (0.282)\n\n\n\nThe image-level lm SE for the baseline difference is too small because it counts every image as a new person (pseudoreplication). For the difference in change, both lm fits are 3–5× less precise than the LMM, because the ~3 cm² between-person spread sits in their residual. The estimate also shifts (0.70 vs 0.99), because with dropout the unpaired lm compares different people at week 0 and week 12.\n\n\n\nQ4 — ICC\nFit an intercept-only random-intercept model to csa and compute the ICC.\n\n\n\n\n\n\n\n\n\nThe function is icc().\n\n\nperformance::icc(fit0)\nParticipant SD ≈ 4.04 cm², residual SD ≈ 1.00 cm², ICC ≈ 0.94. In plain language: 94% of the variation in CSA values is people being different sizes; only 6% is change within people plus measurement noise. Each extra participant is worth far more than each extra scan of the same participant."
+  },
+  {
+    "objectID": "L1.html#mini-project",
+    "href": "L1.html#mini-project",
+    "title": "1 · Why mixed models?",
+    "section": "Mini-project",
+    "text": "Mini-project\nDo the same for leg lean mass (sess$Leg_Lean_Mass_kg): a spaghetti plot, the ICC, and a paragraph for a lab meeting on why the trial will be analysed with a mixed model. Use the sandbox below; it keeps your code between visits."
   }
 ]

@@ -302,23 +302,23 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span class="menu-text">1 · Why mixed models</span></a>
   </li>  
   <li class="nav-item">
-    <a class="nav-link" href="./L2.qmd"> 
+    <a class="nav-link" href="./L2.html"> 
 <span class="menu-text">2 · Intercepts &amp; slopes</span></a>
   </li>  
   <li class="nav-item">
-    <a class="nav-link" href="./L3.qmd"> 
+    <a class="nav-link" href="./L3.html"> 
 <span class="menu-text">3 · The RCT</span></a>
   </li>  
   <li class="nav-item">
-    <a class="nav-link" href="./L4.qmd"> 
+    <a class="nav-link" href="./L4.html"> 
 <span class="menu-text">4 · Inference</span></a>
   </li>  
   <li class="nav-item">
-    <a class="nav-link" href="./L5.qmd"> 
+    <a class="nav-link" href="./L5.html"> 
 <span class="menu-text">5 · Nesting &amp; power</span></a>
   </li>  
   <li class="nav-item">
-    <a class="nav-link" href="./L6.qmd"> 
+    <a class="nav-link" href="./L6.html"> 
 <span class="menu-text">6 · Capstone</span></a>
   </li>  
 </ul>
@@ -438,7 +438,7 @@ eyJhdHRyIjp7ImF1dG9ydW4iOnRydWUsImVkaXQiOmZhbHNlLCJldmFsIjp0cnVlLCJvdXRwdXQiOmZh
 </section>
 <section id="explore-what-pseudoreplication-does" class="level2">
 <h2 class="anchored" data-anchor-id="explore-what-pseudoreplication-does">Explore: what pseudoreplication does</h2>
-<p>Each simulated experiment below has <strong>no true group difference</strong>. It compares two groups with a t-test on every image (pseudoreplication) and with a t-test on participant means (correct). Move the sliders and press <strong>Run Code</strong> to see how often each test gives a false positive.</p>
+<p>Each simulated experiment below has <strong>no true group difference</strong>. It compares two groups with a t-test on every image (pseudoreplication) and with a t-test on participant means (correct). Move the sliders to see how often each test gives a false positive; the result updates each time.</p>
 <div class="cell">
 <div class="sourceCode cell-code hidden" id="cb1" data-startfrom="36" data-source-offset="-0"><pre class="sourceCode js code-with-copy"><code class="sourceCode javascript" style="counter-reset: source-line 35;"><span id="cb1-36"><a href="#cb1-36" aria-hidden="true" tabindex="-1"></a>viewof n_per <span class="op">=</span> Inputs<span class="op">.</span><span class="fu">range</span>([<span class="dv">4</span><span class="op">,</span> <span class="dv">20</span>]<span class="op">,</span> {<span class="dt">value</span><span class="op">:</span> <span class="dv">10</span><span class="op">,</span> <span class="dt">step</span><span class="op">:</span> <span class="dv">1</span><span class="op">,</span> <span class="dt">label</span><span class="op">:</span> <span class="st">"Participants per group"</span>})</span>
 <span id="cb1-37"><a href="#cb1-37" aria-hidden="true" tabindex="-1"></a>viewof k_img <span class="op">=</span> Inputs<span class="op">.</span><span class="fu">range</span>([<span class="dv">1</span><span class="op">,</span> <span class="dv">10</span>]<span class="op">,</span> {<span class="dt">value</span><span class="op">:</span> <span class="dv">3</span><span class="op">,</span> <span class="dt">step</span><span class="op">:</span> <span class="dv">1</span><span class="op">,</span> <span class="dt">label</span><span class="op">:</span> <span class="st">"Images per participant"</span>})</span>
@@ -465,13 +465,13 @@ eyJhdHRyIjp7ImF1dG9ydW4iOnRydWUsImVkaXQiOmZhbHNlLCJldmFsIjp0cnVlLCJvdXRwdXQiOmZh
 </div>
 </div>
 </div>
-<div class="cell" data-input="[&quot;n_per&quot;,&quot;k_img&quot;,&quot;icc_target&quot;]" data-caption="Pseudoreplication simulator (1000 null experiments)">
+<div class="cell" data-input="[&quot;n_per&quot;,&quot;k_img&quot;,&quot;icc_target&quot;]" data-caption="Pseudoreplication simulator (1000 null experiments)" data-autorun="true">
 <div>
 <div id="webr-2" class="exercise-cell">
 
 </div>
 <script type="webr-2-contents">
-eyJhdHRyIjp7ImNhcHRpb24iOiJQc2V1ZG9yZXBsaWNhdGlvbiBzaW11bGF0b3IgKDEwMDAgbnVsbCBleHBlcmltZW50cykiLCJlZGl0Ijp0cnVlLCJldmFsIjp0cnVlLCJpbnB1dCI6WyJuX3BlciIsImtfaW1nIiwiaWNjX3RhcmdldCJdfSwiY29kZSI6InNldC5zZWVkKDEpXG50b3RhbF92YXIgPC0gOVxuc2RfcGVyc29uIDwtIHNxcnQoaWNjX3RhcmdldCAqIHRvdGFsX3ZhcilcbnNkX2ltYWdlICA8LSBzcXJ0KCgxIC0gaWNjX3RhcmdldCkgKiB0b3RhbF92YXIpXG5cbm9uZV9leHBlcmltZW50IDwtIGZ1bmN0aW9uKCkge1xuICBwZXJzb24gPC0gcm5vcm0oMiAqIG5fcGVyLCAyNSwgc2RfcGVyc29uKVxuICBkIDwtIGRhdGEuZnJhbWUoSUQgPSByZXAoc2VxX2xlbigyICogbl9wZXIpLCBlYWNoID0ga19pbWcpLFxuICAgICAgICAgICAgICAgICAgR3JvdXAgPSByZXAoYyhcIkFcIiwgXCJCXCIpLCBlYWNoID0gbl9wZXIgKiBrX2ltZykpXG4gIGQkeSA8LSBwZXJzb25bZCRJRF0gKyBybm9ybShucm93KGQpLCAwLCBzZF9pbWFnZSlcbiAgbWVhbnMgPC0gYWdncmVnYXRlKHkgfiBJRCArIEdyb3VwLCBkYXRhID0gZCwgRlVOID0gbWVhbilcbiAgYyhpbWFnZXMgPSB0LnRlc3QoeSB+IEdyb3VwLCBkYXRhID0gZCkkcC52YWx1ZSxcbiAgICBwZW9wbGUgPSBpZiAobl9wZXIgPiAxKSB0LnRlc3QoeSB+IEdyb3VwLCBkYXRhID0gbWVhbnMpJHAudmFsdWUgZWxzZSBOQSlcbn1cbnAgPC0gcmVwbGljYXRlKDEwMDAsIG9uZV9leHBlcmltZW50KCkpXG5yb3VuZCgxMDAgKiByb3dNZWFucyhwIDwgMC4wNSksIDEpICAgIyAlIGZhbHNlIHBvc2l0aXZlcyAoc2hvdWxkIGJlIDUpIn0=
+eyJhdHRyIjp7ImF1dG9ydW4iOnRydWUsImNhcHRpb24iOiJQc2V1ZG9yZXBsaWNhdGlvbiBzaW11bGF0b3IgKDEwMDAgbnVsbCBleHBlcmltZW50cykiLCJlZGl0Ijp0cnVlLCJldmFsIjp0cnVlLCJpbnB1dCI6WyJuX3BlciIsImtfaW1nIiwiaWNjX3RhcmdldCJdfSwiY29kZSI6InNldC5zZWVkKDEpXG50b3RhbF92YXIgPC0gOVxuc2RfcGVyc29uIDwtIHNxcnQoaWNjX3RhcmdldCAqIHRvdGFsX3ZhcilcbnNkX2ltYWdlICA8LSBzcXJ0KCgxIC0gaWNjX3RhcmdldCkgKiB0b3RhbF92YXIpXG5cbm9uZV9leHBlcmltZW50IDwtIGZ1bmN0aW9uKCkge1xuICBwZXJzb24gPC0gcm5vcm0oMiAqIG5fcGVyLCAyNSwgc2RfcGVyc29uKVxuICBkIDwtIGRhdGEuZnJhbWUoSUQgPSByZXAoc2VxX2xlbigyICogbl9wZXIpLCBlYWNoID0ga19pbWcpLFxuICAgICAgICAgICAgICAgICAgR3JvdXAgPSByZXAoYyhcIkFcIiwgXCJCXCIpLCBlYWNoID0gbl9wZXIgKiBrX2ltZykpXG4gIGQkeSA8LSBwZXJzb25bZCRJRF0gKyBybm9ybShucm93KGQpLCAwLCBzZF9pbWFnZSlcbiAgbWVhbnMgPC0gYWdncmVnYXRlKHkgfiBJRCArIEdyb3VwLCBkYXRhID0gZCwgRlVOID0gbWVhbilcbiAgYyhpbWFnZXMgPSB0LnRlc3QoeSB+IEdyb3VwLCBkYXRhID0gZCkkcC52YWx1ZSxcbiAgICBwZW9wbGUgPSBpZiAobl9wZXIgPiAxKSB0LnRlc3QoeSB+IEdyb3VwLCBkYXRhID0gbWVhbnMpJHAudmFsdWUgZWxzZSBOQSlcbn1cbnAgPC0gcmVwbGljYXRlKDEwMDAsIG9uZV9leHBlcmltZW50KCkpXG5yb3VuZCgxMDAgKiByb3dNZWFucyhwIDwgMC4wNSksIDEpICAgIyAlIGZhbHNlIHBvc2l0aXZlcyAoc2hvdWxkIGJlIDUpIn0=
 </script>
 </div>
 </div>

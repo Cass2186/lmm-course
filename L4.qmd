@@ -1,0 +1,178 @@
+---
+title: "4 · Inference and diagnostics"
+subtitle: "p-values, confidence intervals, residual checks, log outcomes and MMRM"
+webr:
+  packages:
+    - dplyr
+    - tidyr
+    - ggplot2
+    - lme4
+    - lmerTest
+    - emmeans
+    - pbkrtest
+    - nlme
+---
+
+{{< include _extensions/live/_knitr.qmd >}}
+{{< include _setup.qmd >}}
+
+For Gaussian mixed models there is no exact denominator df, so there are several reasonable ways to get a p-value:
+
+| Method | How | Notes |
+|---|---|---|
+| Satterthwaite | `summary(fit)`, `anova(fit)` | `lmerTest` default |
+| Kenward–Roger | `anova(fit, ddf = "Kenward-Roger")`, `emmeans` | Best small-sample behaviour; slower |
+| Likelihood ratio | `anova(m0, m1)` on ML fits | Tests groups of terms |
+| Parametric bootstrap | `confint(fit, method = "boot")` | Slow, fewest assumptions |
+
+With ~40 participants they usually agree to the second decimal. Pick one in the analysis plan.
+
+A random intercept implies **compound symmetry**: every pair of visits is equally correlated. An **MMRM** drops the random effects and gives the residuals an **unstructured** covariance instead. That's the standard primary analysis for regulatory trials with fixed visits.
+
+## Explore: raw or log scale?
+
+Choose an outcome and a scale. A fan shape in the residuals, or a bigger residual SD in men than women, means variability grows with the size of the outcome, and a log scale is usually the fix.
+
+```{ojs}
+//| echo: false
+viewof diag_outcome = Inputs.select(
+  new Map([["Leg press 1RM (kg)", "Leg_Press_1RM_kg"], ["Leg lean mass (kg)", "Leg_Lean_Mass_kg"], ["VL CSA (cm²)", "VL_CSA_cm2"]]),
+  {label: "Outcome"})
+viewof diag_log = Inputs.radio(["raw", "log"], {value: "raw", label: "Scale"})
+```
+
+```{webr}
+#| input:
+#|   - diag_outcome
+#|   - diag_log
+#| caption: Residual diagnostics
+#| autorun: true
+#| fig-height: 3.8
+d <- if (diag_outcome == "VL_CSA_cm2") csa else sess
+d$y <- d[[diag_outcome]]
+d <- d[!is.na(d$y), ]
+if (diag_log == "log") d$y <- log(d$y)
+
+f <- lmer(y ~ Group * Week_f + Sex + (1 | ID), data = d)
+d$fitted <- fitted(f); d$resid <- resid(f)
+
+print(aggregate(resid ~ Sex, data = d, FUN = sd), digits = 3)
+cat(sprintf("correlation of |residual| with fitted value: %.2f\n",
+            cor(abs(d$resid), d$fitted)))
+
+ggplot(d, aes(fitted, resid, colour = Sex)) +
+  geom_hline(yintercept = 0, linetype = 2) +
+  geom_point(alpha = 0.7) +
+  labs(x = "Fitted value", y = "Residual")
+```
+
+::: {.small-note}
+For 1RM, the raw-scale residual SD is ≈ 10 kg in women vs ≈ 14 kg in men; on the log scale both are ≈ 0.05 (≈ 5% day-to-day variation). Lean mass and CSA look fine on either scale.
+:::
+
+## Exercises
+
+All exercises use the primary model `fit <- lmer(VL_CSA_cm2 ~ Group * Week_f + Sex + (1 | ID), data = csa)`, which is created for you:
+
+```{webr}
+#| autorun: true
+#| edit: false
+#| output: false
+fit <- lmer(VL_CSA_cm2 ~ Group * Week_f + Sex + (1 | ID), data = csa)
+```
+
+### Q1 — Three routes to a p-value
+
+```{webr}
+#| exercise: l4q1
+coef(summary(fit))["GroupProtein:Week_f12", ]
+coef(summary(fit, ddf = "______"))["GroupProtein:Week_f12", ]
+
+fit_ml  <- update(fit, REML = FALSE)
+fit_ml0 <- update(fit_ml, . ~ . - Group:Week_f)
+anova(fit_ml0, fit_ml)
+```
+
+::: {.solution exercise="l4q1"}
+Use `ddf = "Kenward-Roger"`. Satterthwaite: t ≈ 3.51 on ≈ 71 df, p ≈ 0.00079; Kenward–Roger is essentially identical. The LRT for the whole interaction gives χ²(2) ≈ 12.1, p ≈ 0.0024, vs the F-test's p ≈ 0.0033. The LRT is a little optimistic because it treats variance parameters as known; with 10 participants the difference would matter.
+:::
+
+### Q2 — Three kinds of CI
+
+The bootstrap takes about 15 seconds in the browser.
+
+```{webr}
+#| exercise: l4q2
+confint(fit, parm = "GroupProtein:Week_f12", method = "Wald")
+confint(fit, parm = "GroupProtein:Week_f12", method = "profile")
+set.seed(1)
+confint(fit, parm = "GroupProtein:Week_f12", method = "boot", nsim = 200)
+```
+
+::: {.solution exercise="l4q2"}
+Wald 0.437 to 1.543; profile 0.444 to 1.535; parametric bootstrap ≈ 0.41 to 1.50 with `set.seed(1)` and 200 simulations (it varies with the seed and `nsim`; use ≥ 1000 for a paper). `emmeans` with KR df gives 0.427 to 1.553. A warning that a few bootstrap refits didn't converge is normal.
+:::
+
+### Q3 — Leave one participant out
+
+Refit the model 40 times, each time without one participant. Does anyone drive the result?
+
+```{webr}
+#| exercise: l4q3
+loo <- sapply(levels(csa$ID), function(id) {
+  f <- lmer(VL_CSA_cm2 ~ Group * Week_f + Sex + (1 | ID),
+            data = droplevels(filter(csa, ID != ______)))
+  fixef(f)["GroupProtein:Week_f12"]
+})
+range(loo)
+```
+
+::: {.solution exercise="l4q3"}
+Filter with `ID != id`. The estimate ranges from ≈ 0.87 (dropping P25) to ≈ 1.13 (dropping P21), so no single participant drives the result.
+:::
+
+### Q4 — Log-scale 1RM as % change
+
+```{webr}
+#| exercise: l4q4
+r_log <- lmer(log(Leg_Press_1RM_kg) ~ Group * Week_f + Sex + (1 | ID), data = sess)
+
+contrast(emmeans(r_log, ~ Week_f | Group), "trt.vs.ctrl", ref = 1, adjust = "none") |>
+  summary(infer = TRUE, type = "______")
+
+ic <- contrast(emmeans(r_log, ~ Group * Week_f),
+               interaction = c("revpairwise", "trt.vs.ctrl"), ref = 1) |>
+  summary(infer = TRUE)
+exp(ic[, c("estimate", "lower.CL", "upper.CL")])
+```
+
+::: {.solution exercise="l4q4"}
+`type = "response"` back-transforms to ratios. Week-12 gains: Placebo ×1.30 (+30%), Protein ×1.33 (+33%). Ratio of fold-changes 1.026 (95% CI 0.968 to 1.087): no evidence that protein affected strength, and the CI rules out a large effect.
+:::
+
+### Q5 — MMRM vs random intercept
+
+```{webr}
+#| exercise: l4q5
+d <- csa |> mutate(visit = as.integer(Week_f))
+g_us <- nlme::gls(VL_CSA_cm2 ~ Group * Week_f + Sex, data = d,
+                  correlation = nlme::corSymm(form = ~ visit | ID),
+                  weights = nlme::varIdent(form = ~ 1 | Week_f), method = "REML")
+g_cs <- nlme::gls(VL_CSA_cm2 ~ Group * Week_f + Sex, data = d,
+                  correlation = nlme::corCompSymm(form = ~ visit | ID), method = "REML")
+anova(g_cs, g_us)
+cov2cor(nlme::getVarCov(g_us, individual = "P01"))
+rbind(MMRM = summary(g_us)$tTable["GroupProtein:Week_f12", 1:2],
+      CS   = summary(g_cs)$tTable["GroupProtein:Week_f12", 1:2])
+```
+
+::: {.solution exercise="l4q5"}
+CS vs unstructured: χ²(4) ≈ 8.98, p ≈ 0.062. The unstructured correlations fall with distance between visits (0.97, 0.96 for adjacent visits; 0.94 for week 0 vs 12), which is what individual growth rates produce. The MMRM week-12 effect is 0.993 (SE 0.336) vs 0.990 (0.282) under compound symmetry. The random-intercept SE is too small when the week-0/week-12 correlation is lower than CS assumes, which is the argument for prespecifying an MMRM (or a random slope).
+:::
+
+## Sandbox
+
+```{webr}
+#| caption: Sandbox
+# mini-project: a diagnostics supplement for leg lean mass
+```

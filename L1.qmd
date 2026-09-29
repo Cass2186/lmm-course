@@ -29,7 +29,7 @@ The independent unit for a treatment effect is the level at which treatment was 
 
 ## Explore: what pseudoreplication does
 
-Each simulated experiment below has **no true group difference**. It compares two groups with a t-test on every image (pseudoreplication) and with a t-test on participant means (correct). Move the sliders and press **Run Code** to see how often each test gives a false positive.
+Each simulated experiment below has **no true group difference**. It compares two groups with a t-test on every image (pseudoreplication) and with a t-test on participant means (correct). Move the sliders to see how often each test gives a false positive; the result updates each time.
 
 ```{ojs}
 //| echo: false
@@ -44,6 +44,7 @@ viewof icc_target = Inputs.range([0, 0.99], {value: 0.9, step: 0.01, label: "ICC
 #|   - k_img
 #|   - icc_target
 #| caption: Pseudoreplication simulator (1000 null experiments)
+#| autorun: true
 set.seed(1)
 total_var <- 9
 sd_person <- sqrt(icc_target * total_var)

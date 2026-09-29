@@ -1,0 +1,204 @@
+---
+title: "3 · Modelling the RCT"
+subtitle: "Group × time, emmeans contrasts, baseline adjustment and dropout"
+webr:
+  packages:
+    - dplyr
+    - tidyr
+    - ggplot2
+    - lme4
+    - lmerTest
+    - emmeans
+    - pbkrtest
+---
+
+{{< include _extensions/live/_knitr.qmd >}}
+{{< include _setup.qmd >}}
+
+::: {.estimand}
+**Primary estimand**: the difference between Protein and Placebo in mean change in VL CSA from week 0 to week 12, in all randomized participants.
+:::
+
+With a few fixed visits, treat time as a **factor** (`Week_f`). The primary model is
+
+```r
+fit <- lmer(VL_CSA_cm2 ~ Group * Week_f + Sex + (1 | ID), data = csa)
+```
+
+| Coefficient | Meaning |
+|---|---|
+| `GroupProtein` | Protein − Placebo at week 0 (chance only, by randomization) |
+| `Week_f6`, `Week_f12` | Change from week 0 in **Placebo** |
+| `SexM` | M − F (the stratification factor) |
+| `GroupProtein:Week_f12` | **Extra change in Protein by week 12: the estimand** |
+
+`emmeans` gives the same number with clearer labels. Note that `emmeans` uses Kenward–Roger df, while `summary()` uses Satterthwaite; they agree closely here.
+
+## Explore: five ways to answer the trial question
+
+Pick an outcome. Each row is a different analysis of the week-12 treatment effect, with its 95% CI. Only some of them estimate the estimand efficiently.
+
+```{ojs}
+//| echo: false
+viewof outcome = Inputs.select(
+  new Map([["VL CSA (cm²)", "csa"], ["Leg lean mass (kg)", "lean"], ["Leg press 1RM (log scale)", "rm"]]),
+  {label: "Outcome"})
+```
+
+```{webr}
+#| input:
+#|   - outcome
+#| caption: Method comparison
+#| autorun: true
+#| fig-height: 3.6
+d <- switch(outcome,
+  csa  = transform(csa, y = VL_CSA_cm2),
+  lean = transform(sess, y = Leg_Lean_Mass_kg),
+  rm   = transform(sess, y = log(Leg_Press_1RM_kg)))
+d <- d[!is.na(d$y), c("ID", "Group", "Sex", "Week", "Week_f", "y")]
+emm_options(lmer.df = "satterthwaite")
+
+est <- function(ct) { s <- summary(ct, infer = TRUE); s <- s[nrow(s), ]
+  c(s$estimate, s$lower.CL, s$upper.CL) }
+
+fit <- lmer(y ~ Group * Week_f + Sex + (1 | ID), data = d)
+r1 <- est(contrast(emmeans(fit, ~ Group * Week_f), interaction = c("revpairwise", "trt.vs.ctrl"), ref = 1))
+r2 <- est(contrast(emmeans(fit, ~ Group | Week_f), "revpairwise"))
+
+d$P6 <- as.numeric(d$Group == "Protein" & d$Week == 6)
+d$P12 <- as.numeric(d$Group == "Protein" & d$Week == 12)
+cl <- lmer(y ~ Week_f + P6 + P12 + Sex + (1 | ID), data = d)
+r3 <- fixef(cl)["P12"] + c(0, -1, 1) * qt(.975, 70) * sqrt(vcov(cl)["P12", "P12"])
+
+base <- setNames(d$y[d$Week == 0], d$ID[d$Week == 0])
+fu <- d[d$Week > 0, ]; fu$Base_c <- base[as.character(fu$ID)] - mean(base); fu$Week_f <- droplevels(fu$Week_f)
+an <- lmer(y ~ Base_c + Sex + Group * Week_f + (1 | ID), data = fu)
+r4 <- est(contrast(emmeans(an, ~ Group | Week_f), "revpairwise"))
+
+w <- reshape(d[d$Week %in% c(0, 12), c("ID", "Group", "Week", "y")], idvar = c("ID", "Group"),
+             timevar = "Week", direction = "wide")
+tt <- t.test(I(y.12 - y.0) ~ relevel(Group, "Protein"), data = w)
+r5 <- c(unname(tt$estimate[1] - tt$estimate[2]), tt$conf.int)
+
+res <- data.frame(method = c("LMM: difference in change", "LMM: arms at week 12 only",
+                             "cLDA (constrained baseline)", "ANCOVA-style LMM",
+                             "Change-score t-test (completers)"),
+                  rbind(r1, r2, r3, r4, r5))
+names(res)[2:4] <- c("estimate", "lower", "upper")
+res$method <- factor(res$method, levels = rev(res$method))
+print(res, digits = 3, row.names = FALSE)
+
+ggplot(res, aes(estimate, method)) +
+  geom_vline(xintercept = 0, linetype = 2) +
+  geom_pointrange(aes(xmin = lower, xmax = upper), colour = "#2f6f63") +
+  labs(x = "Protein − Placebo, week 12", y = NULL)
+```
+
+::: {.small-note}
+The "arms at week 12 only" row is a between-person comparison, so its CI is ~3× wider and it includes the chance baseline imbalance. The difference-in-change, cLDA and ANCOVA analyses all use each person as their own control and agree closely, as they should in a randomized trial. For 1RM the estimates are log ratios; `exp()` them for fold-change ratios.
+:::
+
+## Exercises
+
+### Q1 — Fit and read the primary model
+
+```{webr}
+#| exercise: l3q1
+fit <- lmer(VL_CSA_cm2 ~ Group * ______ + Sex + (1 | ID), data = csa)
+summary(fit)
+anova(fit)
+```
+
+::: {.solution exercise="l3q1"}
+```r
+fit <- lmer(VL_CSA_cm2 ~ Group * Week_f + Sex + (1 | ID), data = csa)
+```
+`GroupProtein:Week_f12` ≈ 0.99 (SE 0.28, p ≈ 0.0008): Protein gained ~1 cm² more than Placebo by week 12. `Week_f12` ≈ 1.05 is Placebo's own gain from training. The omnibus `Group:Week_f` F-test (F ≈ 6.20, p ≈ 0.003) asks whether trajectories differ *at all*; report the specific week-12 contrast with its CI instead.
+:::
+
+### Q2 — Changes and the difference in change
+
+Get each arm's change from baseline, then the Protein − Placebo difference in change.
+
+```{webr}
+#| exercise: l3q2
+fit <- lmer(VL_CSA_cm2 ~ Group * Week_f + Sex + (1 | ID), data = csa)
+
+contrast(emmeans(fit, ~ Week_f | Group), "trt.vs.ctrl", ref = 1, adjust = "none") |>
+  summary(infer = TRUE)
+
+contrast(emmeans(fit, ~ Group * Week_f),
+         interaction = c("______", "trt.vs.ctrl"), ref = 1) |>
+  summary(infer = TRUE)
+```
+
+::: {.hint exercise="l3q2"}
+`"revpairwise"` gives Protein − Placebo; `"pairwise"` would give Placebo − Protein.
+:::
+
+::: {.solution exercise="l3q2"}
+| | Change wk 0→6 | Change wk 0→12 |
+|---|---|---|
+| Placebo | 0.64 [0.24, 1.03] | 1.05 [0.66, 1.43] |
+| Protein | 1.18 [0.79, 1.58] | 2.04 [1.63, 2.45] |
+| **Protein − Placebo** | 0.55 [−0.01, 1.10] | **0.99 [0.43, 1.55]** |
+
+That's ≈ 4% of the baseline mean CSA (24.8 cm²).
+:::
+
+### Q3 — Constrained baseline (cLDA)
+
+Fit cLDA by replacing the `Group` main effect with hand-made indicators, so both arms share one baseline mean.
+
+```{webr}
+#| exercise: l3q3
+d <- csa |> mutate(
+  Prot_wk6  = as.numeric(Group == "Protein" & Week == 6),
+  Prot_wk12 = as.numeric(Group == "Protein" & Week == ______)
+)
+fit_clda <- lmer(VL_CSA_cm2 ~ Week_f + Prot_wk6 + Prot_wk12 + Sex + (1 | ID), data = d)
+coef(summary(fit_clda))["Prot_wk12", ]
+```
+
+::: {.solution exercise="l3q3"}
+`Prot_wk12` ≈ 1.03 (SE 0.28), almost identical to the unconstrained 0.99 (0.28) and ANCOVA 1.03 (0.29). cLDA partially corrects the chance ≈ 0.9 cm² baseline imbalance.
+:::
+
+### Q4 — Completers only
+
+Refit the primary model using only the 35 participants with all three visits. Compare with the all-randomized estimate.
+
+```{webr}
+#| exercise: l3q4
+completers <- csa |> count(ID) |> filter(n == ______) |> pull(ID)
+fit_comp <- lmer(VL_CSA_cm2 ~ Group * Week_f + Sex + (1 | ID),
+                 data = filter(csa, ID %in% completers))
+contrast(emmeans(fit_comp, ~ Group * Week_f),
+         interaction = c("revpairwise", "trt.vs.ctrl"), ref = 1) |>
+  summary(infer = TRUE)
+```
+
+::: {.solution exercise="l3q4"}
+Completers: 0.90 (SE 0.30, 95% CI 0.30 to 1.50) vs all randomized 0.99 (SE 0.28, 0.43 to 1.55). The dropout here was random, so they agree. The all-data LMM assumes **missing at random**; it would be biased if, say, Protein participants who weren't growing were more likely to quit.
+:::
+
+### Q5 — Factor or linear time?
+
+```{webr}
+#| exercise: l3q5
+fit     <- lmer(VL_CSA_cm2 ~ Group * Week_f + Sex + (1 | ID), data = csa)
+fit_lin <- lmer(VL_CSA_cm2 ~ Group * Week   + Sex + (1 | ID), data = csa)
+anova(fit_lin, fit)
+12 * fixef(fit_lin)["GroupProtein:Week"]
+```
+
+::: {.solution exercise="l3q5"}
+LRT χ²(2) ≈ 1.34, p ≈ 0.51, and AIC favours linear time by ≈ 2.7; the linear model's 12-week difference is ≈ 1.00 (SE 0.28). Still, don't switch the primary analysis after seeing the data; report linear time as supportive.
+:::
+
+## Sandbox
+
+```{webr}
+#| caption: Sandbox
+# mini-project: repeat Q1-Q4 for Leg_Lean_Mass_kg in `sess`
+```

@@ -1,0 +1,183 @@
+---
+title: "2 · Random intercepts and slopes"
+subtitle: "lmer() syntax, variance components, REML vs ML, shrinkage and singular fits"
+webr:
+  packages:
+    - dplyr
+    - tidyr
+    - ggplot2
+    - lme4
+    - lmerTest
+---
+
+{{< include _extensions/live/_knitr.qmd >}}
+{{< include _setup.qmd >}}
+
+The random-effects part of the formula tells the model which rows belong together and how they are allowed to differ. Too little structure and you're back to pseudoreplication; too much and the model can't be estimated.
+
+$$y_{tj} = (\beta_0 + u_{0j}) + (\beta_1 + u_{1j})\,t + \varepsilon_{tj}$$
+
+- **β₀, β₁** (fixed): the average participant's baseline and growth over the 12 weeks.
+- **σ₀** (random-intercept SD): how much people differ at baseline.
+- **σ₁** (random-slope SD): how much people differ in growth. This is responder heterogeneity, estimated properly.
+- **σ** (residual SD): visit-to-visit noise around each person's own line.
+
+| Formula term | Meaning |
+|---|---|
+| `(1 | ID)` | Random intercept per participant |
+| `(1 + Week12 | ID)` | Correlated random intercept and slope |
+| `(1 + Week12 || ID)` | Intercept and slope, correlation fixed at 0 |
+| `(1 | ID/Visit)` | Visits nested in participants |
+| `(1 | ID) + (1 | Sonographer)` | Crossed effects |
+
+Time is used here as `Week12 = Week / 12`, so a slope means "change over the whole 12-week intervention". Rescaling like this keeps the optimizer happy and is easier to read.
+
+## Explore: shrinkage
+
+The mixed model's participant-specific slopes (BLUPs) are pulled toward the average, more so when a person's own data are noisy. Add extra measurement noise, or take away people's week-6 visit, and watch what happens to the pooled slopes and to σ₁.
+
+```{ojs}
+//| echo: false
+viewof extra_sd = Inputs.range([0, 1.5], {value: 0, step: 0.05, label: "Extra visit noise SD (cm²)"})
+viewof n_two = Inputs.range([0, 30], {value: 0, step: 1, label: "Participants who lose their week-6 visit"})
+```
+
+```{webr}
+#| input:
+#|   - extra_sd
+#|   - n_two
+#| caption: Shrinkage explorer
+#| autorun: true
+#| fig-height: 4.6
+set.seed(3)
+d <- csa
+d$y <- d$VL_CSA_cm2 + rnorm(nrow(d), 0, extra_sd)
+lose6 <- sample(levels(d$ID), n_two)
+d <- d[!(d$ID %in% lose6 & d$Week == 6), ]
+
+m    <- suppressMessages(lmer(y ~ Week12 + (1 + Week12 | ID), data = d))
+ids  <- levels(droplevels(d$ID))
+raw  <- vapply(ids, function(i) {
+          x <- d[d$ID == i, ]
+          if (nrow(x) > 1) unname(coef(lm(y ~ Week12, data = x))[2]) else NA_real_
+        }, numeric(1))
+pool <- coef(m)$ID[ids, "Week12"]
+sh   <- data.frame(raw = raw, pooled = pool)
+
+vc <- as.data.frame(VarCorr(m))
+cat(sprintf("slope SD (sigma1) = %.2f   residual SD = %.2f   singular fit: %s\n",
+            vc$sdcor[2], sigma(m), isSingular(m)))
+
+ggplot(sh, aes(raw, pooled)) +
+  geom_abline(linetype = 2, colour = "grey50") +
+  geom_hline(yintercept = fixef(m)["Week12"], colour = "#2f6f63") +
+  geom_point(size = 2, alpha = 0.8, na.rm = TRUE) +
+  coord_equal(xlim = c(-3, 5), ylim = c(-3, 5)) +
+  labs(x = "No-pooling slope (cm² / 12 wk)", y = "Partial-pooling slope")
+```
+
+::: {.small-note}
+Points on the dashed line would mean no shrinkage; the green line is the average slope. As noise rises, the pooled slopes collapse toward the average, and eventually σ₁ hits zero (a singular fit). This is why raw change scores are a poor way to label "non-responders".
+:::
+
+## Exercises
+
+### Q1 — Random intercept
+
+Fit `VL_CSA_cm2 ~ Week + (1 | ID)` and interpret the fixed slope, the participant SD and the residual SD.
+
+```{webr}
+#| exercise: l2q1
+m_ri <- lmer(VL_CSA_cm2 ~ Week + (1 | ______), data = csa)
+summary(m_ri)
+```
+
+::: {.solution exercise="l2q1"}
+```r
+m_ri <- lmer(VL_CSA_cm2 ~ Week + (1 | ID), data = csa)
+```
+Intercept ≈ 24.88 cm² (average at week 0); Week ≈ 0.127 cm²/week (≈ 1.5 cm² over 12 weeks); participant SD ≈ 4.07; residual SD ≈ 0.66. This model assumes everyone grows at the same rate.
+:::
+
+### Q2 — Add a random slope
+
+Fit a random intercept **and** slope for `Week12`, then compare with the random-intercept model by LRT. Why is `refit = FALSE` fine here?
+
+```{webr}
+#| exercise: l2q2
+m_ri12 <- lmer(VL_CSA_cm2 ~ Week12 + (1 | ID), data = csa)
+m_rs   <- lmer(VL_CSA_cm2 ~ Week12 + (1 + ______ | ID), data = csa)
+VarCorr(m_rs)
+anova(m_rs, m_ri12, refit = ______)
+```
+
+::: {.hint exercise="l2q2"}
+The random slope term is `Week12`. The two models have identical fixed effects, so REML fits can be compared directly: `refit = FALSE`.
+:::
+
+::: {.solution exercise="l2q2"}
+```r
+m_rs <- lmer(VL_CSA_cm2 ~ Week12 + (1 + Week12 | ID), data = csa)
+anova(m_rs, m_ri12, refit = FALSE)
+```
+Slope SD ≈ 0.92 cm² per 12 weeks, correlation ≈ 0.08, residual SD drops from ≈ 0.66 to ≈ 0.47. LRT χ²(2) ≈ 11.4, p ≈ 0.003 (conservative, because σ₁ = 0 lies on the boundary). The random slope is supported.
+:::
+
+### Q3 — Shrinkage in numbers
+
+Compare the SD of raw (per-person `lm`) slopes with the SD of the mixed-model slopes, and look up participants P03 and P33.
+
+```{webr}
+#| exercise: l2q3
+m_rs <- lmer(VL_CSA_cm2 ~ Week12 + (1 + Week12 | ID), data = csa)
+ols  <- coef(lme4::lmList(VL_CSA_cm2 ~ Week12 | ID, data = csa))
+sh <- data.frame(raw = ols$Week12, pooled = coef(m_rs)$ID[rownames(ols), "Week12"],
+                 row.names = rownames(ols))
+c(sd_raw = sd(sh$raw), sd_pooled = sd(sh$pooled))
+sh[c("P03", "______"), ]
+```
+
+::: {.solution exercise="l2q3"}
+SD of raw slopes ≈ 1.14, of pooled slopes ≈ 0.74; σ₁ ≈ 0.92 sits between them. P03's raw slope is ≈ −0.64 (an apparent "non-responder") but the pooled estimate is ≈ +0.11. P33 has only 2 visits and moves from ≈ 2.91 to ≈ 2.04, about two-thirds of the way back to the mean.
+:::
+
+### Q4 — A singular fit
+
+Try a random slope for **leg lean mass**. What message do you get, and what do the variance components show?
+
+```{webr}
+#| exercise: l2q4
+lm_rs <- lmer(Leg_Lean_Mass_kg ~ Week12 + (1 + Week12 | ID), data = sess)
+VarCorr(lm_rs)
+isSingular(lm_rs)
+lm_ri <- lmer(Leg_Lean_Mass_kg ~ Week12 + (1 | ID), data = sess)
+anova(lm_rs, lm_ri, refit = FALSE)
+```
+
+::: {.solution exercise="l2q4"}
+`boundary (singular) fit`: the slope SD is tiny (≈ 0.045 kg per 12 weeks) and the correlation is exactly −1. LRT χ²(2) ≈ 1.9, p ≈ 0.39. Use the random-intercept model and report why the slope was dropped. With three DXA scans and a residual SD of ≈ 0.14 kg, individual differences in change can't be separated from noise.
+:::
+
+### Q5 — REML vs ML
+
+Fit `VL_CSA_cm2 ~ Group * Week12 + Sex + (1 + Week12 | ID)` with REML and ML, and compare variance components and SEs.
+
+```{webr}
+#| exercise: l2q5
+fit_reml <- lmer(VL_CSA_cm2 ~ Group * Week12 + Sex + (1 + Week12 | ID), data = csa)
+fit_ml   <- update(fit_reml, REML = ______)
+VarCorr(fit_reml); VarCorr(fit_ml)
+round(coef(summary(fit_reml))[, 1:2], 3)
+round(coef(summary(fit_ml))[, 1:2], 3)
+```
+
+::: {.solution exercise="l2q5"}
+Fixed estimates barely move (`GroupProtein:Week12` ≈ 1.02 in both), but ML variance components are smaller (participant SD 2.86 vs 2.97; slope SD 0.76 vs 0.79), so ML SEs are slightly smaller (0.324 vs 0.332). Report REML; use ML (which `anova()` does automatically) when comparing models with different fixed effects.
+:::
+
+## Sandbox
+
+```{webr}
+#| caption: Sandbox
+# e.g. try the mini-project: random slopes for log(Leg_Press_1RM_kg)
+```
